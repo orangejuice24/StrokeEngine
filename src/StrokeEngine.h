@@ -90,6 +90,8 @@ static String verboseState[] = {
   "[4] Servo position streaming"
 };
 
+class FastAccelStepper; // Forward declaration
+
 /**************************************************************************/
 /*!
   @brief  Stroke Engine provides a convenient package for stroking motions
@@ -108,7 +110,7 @@ class StrokeEngine {
           accordingly. StrokeEngine is in state UNDEFINED
         */
         /**************************************************************************/
-        void begin(machineGeometry *physics, motorProperties *motor);
+        void begin(machineGeometry *physics, motorProperties *motor, FastAccelStepper *extServo = nullptr);
 
         /**************************************************************************/
         /*!
@@ -253,9 +255,12 @@ class StrokeEngine {
           the servo and sets the position to -KEEPOUT_BOUNDARY
           @param speed  Speed in mm/s used for finding the homing switch. 
                         Defaults to 5.0 mm/s
+          @param insideKeepout  Whether the current home location is currently
+                                actuating the limit switch and is inside the 
+                                keepout boundary
         */
         /**************************************************************************/
-        void thisIsHome(float speed = 5.0);
+        void thisIsHome(float speed = 5.0, bool insideKeepout = true);
 
         /**************************************************************************/
         /*!

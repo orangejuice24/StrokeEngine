@@ -3,10 +3,11 @@
 #include <FastAccelStepper.h>
 #include <pattern.h>
 
+// Keep one of these even if we dont use it. It's only an array of pointers
 FastAccelStepperEngine engine = FastAccelStepperEngine();
 FastAccelStepper *servo = NULL;
 
-void StrokeEngine::begin(machineGeometry *physics, motorProperties *motor) {
+void StrokeEngine::begin(machineGeometry *physics, motorProperties *motor, FastAccelStepper *extServo) {
     // store the machine geometry and motor properties pointer
     _physics = physics;
     _motor = motor;
@@ -30,16 +31,30 @@ void StrokeEngine::begin(machineGeometry *physics, motorProperties *motor) {
     _timeOfStroke = 1.0;
     _sensation = 0.0;
 
-    // Setup FastAccelStepper 
-    engine.init();
-    servo = engine.stepperConnectToPin(_motor->stepPin);
-    if (servo) {
+    // Setup FastAccelStepper if needed
+    if (!extServo)
+    {
+        engine.init();
+        servo = engine.stepperConnectToPin(_motor->stepPin);
+    }
+    else
+    {
+        servo = extServo;
+    }
+
+    if (servo)
+    {
         servo->setDirectionPin(_motor->directionPin, _motor->invertDirection);
         servo->setEnablePin(_motor->enablePin, _motor->enableActiveLow);
         servo->setAutoEnable(false);
         servo->disableOutputs(); 
+
+        Serial.println("Servo initialized");
     }
-    Serial.println("Servo initialized");
+    else
+    {
+        Serial.println("Failed to initialize servo");
+    }
 
 #ifdef DEBUG_TALKATIVE
     Serial.println("Stroke Engine State: " + verboseState[_state]);
@@ -386,7 +401,7 @@ void StrokeEngine::enableAndHome(endstopProperties *endstop, float speed) {
 
 }
 
-void StrokeEngine::thisIsHome(float speed) {
+void StrokeEngine::thisIsHome(float speed, bool insideKeepout) {
     // set homeing speed
     _homeingSpeed = speed * _motor->stepsPerMillimeter;
 
@@ -394,16 +409,35 @@ void StrokeEngine::thisIsHome(float speed) {
         // Enable Servo
         servo->enableOutputs();
 
-        // Stet current position as home
-        servo->setCurrentPosition(-_motor->stepsPerMillimeter * _physics->keepoutBoundary);
+        int32_t currentPositionMm;
+
+        if (_homeingToBack == 1) {
+            if (insideKeepout) {
+                // Position is at -KEEPOUT_BOUNDARY
+                currentPositionMm = -_physics->keepoutBoundary;
+            } else {
+                // Position is at 0
+                currentPositionMm = 0;
+            }
+        } else {
+            if (insideKeepout) {
+                // Position is at PHYSICAL_TRAVEL + KEEPOUT_BOUNDARY
+                currentPositionMm = _physics->physicalTravel + _physics->keepoutBoundary;
+            } else {
+                // Position is at PHYSICAL_TRAVEL
+                currentPositionMm = _physics->physicalTravel;
+            }
+        }
+        
+        servo->setCurrentPosition(_motor->stepsPerMillimeter * currentPositionMm);
 
         // Set feedrate for homing
-        servo->setSpeedInHz(_homeingSpeed);       
+        servo->setSpeedInHz(_homeingSpeed);
         servo->setAcceleration(_maxStepAcceleration / 10);
 
         // drive free of switch and set axis to 0
         servo->moveTo(_minStep);
-        
+
         // Change state
         _isHomed = true;
         _state = READY;
