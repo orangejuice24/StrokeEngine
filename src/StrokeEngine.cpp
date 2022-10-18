@@ -401,7 +401,7 @@ void StrokeEngine::enableAndHome(endstopProperties *endstop, float speed) {
 
 }
 
-void StrokeEngine::thisIsHome(float speed, bool insideKeepout) {
+void StrokeEngine::thisIsHome(float speed, bool insideKeepout, bool skipMove) {
     // set homeing speed
     _homeingSpeed = speed * _motor->stepsPerMillimeter;
 
@@ -435,8 +435,11 @@ void StrokeEngine::thisIsHome(float speed, bool insideKeepout) {
         servo->setSpeedInHz(_homeingSpeed);
         servo->setAcceleration(_maxStepAcceleration / 10);
 
-        // drive free of switch and set axis to 0
-        servo->moveTo(_minStep);
+        if (!skipMove)
+        {
+            // drive free of switch and set axis to 0
+            servo->moveTo(_minStep);
+        }
 
         // Change state
         _isHomed = true;

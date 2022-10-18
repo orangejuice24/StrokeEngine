@@ -257,10 +257,12 @@ class StrokeEngine {
                         Defaults to 5.0 mm/s
           @param insideKeepout  Whether the current home location is currently
                                 actuating the limit switch and is inside the 
-                                keepout boundary
+                                keepout boundary. Defaults to true.
+          @param skipMove  Should we skip the move to zero after setting the current
+                           position as home. Defaults to false.
         */
         /**************************************************************************/
-        void thisIsHome(float speed = 5.0, bool insideKeepout = true);
+        void thisIsHome(float speed = 5.0, bool insideKeepout = true, bool skipMove = false);
 
         /**************************************************************************/
         /*!
